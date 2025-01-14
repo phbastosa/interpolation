@@ -2,22 +2,22 @@
 # include "cubic.hpp"
 # include "linear.hpp"
 
-void build_function(float * f, float * x, int n)
+void build_function(float * f, float * x, int nx)
 {
     float xi =-10.0f;
     float xf = 10.0f;
 
-    linspace(x, xi, xf, n);
+    linspace(x, xi, xf, nx);
 
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < nx; i++)
         f[i] = sinf(x[i]);
 }
 
-void perform_linear_interpolation(float * result, float * F, float * xp, float * x, int skipx, int n)
+void perform_linear_interpolation(float * result, float * F, float * xp, float * x, int skipx, int nx)
 {
     float P[2];
 
-    for (int idx = skipx + 1; idx < n - skipx - 1; idx++)
+    for (int idx = skipx + 1; idx < nx - skipx - 1; idx++)
     {   
         int ipx = (int)(idx/skipx);
 
@@ -30,11 +30,11 @@ void perform_linear_interpolation(float * result, float * F, float * xp, float *
     }
 }
 
-void perform_cubic_interpolation(float * result, float * F, float * xp, float * x, int skipx, int n)
+void perform_cubic_interpolation(float * result, float * F, float * xp, float * x, int skipx, int nx)
 {
     float P[4];
 
-    for (int idx = skipx + 1; idx < n - skipx - 1; idx++)
+    for (int idx = skipx + 1; idx < nx - skipx - 1; idx++)
     {   
         int ipx = (int)(idx/skipx);
 
