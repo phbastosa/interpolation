@@ -2,114 +2,97 @@
 # include "cubic.hpp"
 # include "linear.hpp"
 
-void build_original_function(Function * function, int Nx, int Ny, int Nz)
+void build_function(float * f, float * x, float * y, float * z, int nx, int ny, int nz)
 {
-    float xi = -5.0f;
-    float yi = -5.0f;
-    float zi = -5.0f;
+    float xi =-10.0f;
+    float yi =-10.0f;
+    float zi =-10.0f;
 
-    float xf = 5.0f;
-    float yf = 5.0f;
-    float zf = 5.0f;
+    float xf = 10.0f;
+    float yf = 10.0f;
+    float zf = 10.0f;
 
-    float * x = new float[Nx]();
-    float * y = new float[Ny]();
-    float * z = new float[Nz]();
+    linspace(x, xi, xf, nx);
+    linspace(y, yi, yf, ny);
+    linspace(z, zi, zf, nz);
 
-    linspace(x, xi, xf, Nx);
-    linspace(y, yi, yf, Ny);
-    linspace(z, zi, zf, Nz);
-
-    for (int i = 0; i < Nz; i++)
+    for (int i = 0; i < nx; i++)
     {
-        for (int j = 0; j < Nx; j++)
+        for (int j = 0; j < ny; j++)
         {
-            for (int k = 0; k < Ny; k++)
-            {
-                function[i + j*Nz + k*Nx*Nz].z = z[i];
-                function[i + j*Nz + k*Nx*Nz].x = x[j];
-                function[i + j*Nz + k*Nx*Nz].y = y[k];
-
-                function[i + j*Nz + k*Nx*Nz].v = sinf(z[i]) + sinf(x[j]) + sinf(y[k]);
-            }
+            for (int k = 0; k < nz; k++)
+                f[i + j*nx + k*nx*ny] = sinf(x[i]) + sinf(y[j]) + sinf(z[k]);
         }
     }
-
-    delete[] x;
-    delete[] y;
-    delete[] z;
 }
 
-void perform_linear_interpolation(Function * F_in, Function * F_out, int skip_x, int skip_y, int skip_z, int Nx, int Ny, int Nz)
+void perform_linear_interpolation(float * result, float * F, float * xp, float * yp, float * zp, float * x, float * y, float * z, int skipx, int skipy, int skipz, int nx, int ny, int nz)
 {
     float P[2][2][2];
 
-    int rNx = (int)((Nx-1)/skip_x) + 1;
-    int rNz = (int)((Nz-1)/skip_z) + 1;
+    int rNx = (int)((nx-1)/skipx) + 1;
+    int rNy = (int)((nz-1)/skipy) + 1;
 
-    for (int i = skip_z+1; i < Nz-skip_z-1; i++)
+    for (int idx = skipx + 1; idx < nx - skipx - 1; idx++)
     {   
-        for (int j = skip_x+1; j < Nx-skip_x-1; j++)
+        for (int idy = skipy + 1; idy < ny - skipy - 1; idy++)
         {   
-            for (int k = skip_y+1; k < Ny-skip_y-1; k++)
+            for (int idz = skipz + 1; idz < nz - skipz - 1; idz++)
             {   
-                int idz = (int)(i/skip_z);
-                int idx = (int)(j/skip_x);
-                int idy = (int)(k/skip_y);
+                int ipx = (int)(idx/skipx);
+                int ipy = (int)(idy/skipy);
+                int ipz = (int)(idz/skipz);
 
-                float dz = (F_out[i + j*Nz + k*Nx*Nz].z - F_in[idz + idx*rNz + idy*rNx*rNz].z) / (F_in[(idz+1) + idx*rNz + idy*rNx*rNz].z - F_in[idz + idx*rNz + idy*rNx*rNz].z);  
-                float dx = (F_out[i + j*Nz + k*Nx*Nz].x - F_in[idz + idx*rNz + idy*rNx*rNz].x) / (F_in[idz + (idx+1)*rNz + idy*rNx*rNz].x - F_in[idz + idx*rNz + idy*rNx*rNz].x);  
-                float dy = (F_out[i + j*Nz + k*Nx*Nz].y - F_in[idz + idx*rNz + idy*rNx*rNz].y) / (F_in[idz + idx*rNz + (idy+1)*rNx*rNz].y - F_in[idz + idx*rNz + idy*rNx*rNz].y);  
+                float dx = (x[idx] - xp[ipx]) / (xp[ipx+1] - xp[ipx]);  
+                float dy = (y[idy] - yp[ipy]) / (yp[ipy+1] - yp[ipy]);  
+                float dz = (z[idz] - zp[ipz]) / (zp[ipz+1] - zp[ipz]);  
 
-                P[0][0][0] = F_in[idz + idx*rNz + idy*rNx*rNz].v;                
-                P[0][0][1] = F_in[(idz+1) + idx*rNz + idy*rNx*rNz].v;                
-                P[0][1][0] = F_in[idz + idx*rNz + (idy+1)*rNx*rNz].v;               
-                P[0][1][1] = F_in[(idz+1) + idx*rNz + (idy+1)*rNx*rNz].v;
+                for (int pIdx = 0; pIdx < 2; pIdx++)
+                {
+                    for (int pIdy = 0; pIdy < 2; pIdy++)
+                    {
+                        for (int pIdz = 0; pIdz < 2; pIdz++)
+                            P[pIdx][pIdy][pIdz] = F[(ipx + pIdx) + (ipy + pIdy)*rNx + (ipz + pIdz)*rNx*rNy];                
+                    }
+                }
 
-                P[1][0][0] = F_in[idz + (idx+1)*rNz + idy*rNx*rNz].v;                
-                P[1][0][1] = F_in[(idz+1) + (idx+1)*rNz + idy*rNx*rNz].v;                
-                P[1][1][0] = F_in[idz + (idx+1)*rNz + (idy+1)*rNx*rNz].v;               
-                P[1][1][1] = F_in[(idz+1) + (idx+1)*rNz + (idy+1)*rNx*rNz].v;
-
-                F_out[i + j*Nz + k*Nx*Nz].v = linear3D(P, dx, dy, dz);   
+                result[idx + idy*nx + idz*nx*ny] = linear3d(P, dx, dy, dz);   
             }
         }
     }
 }
 
-void perform_cubic_interpolation(Function * F_in, Function * F_out, int skip_x, int skip_y, int skip_z, int Nx, int Ny, int Nz)
+void perform_cubic_interpolation(float * result, float * F, float * xp, float * yp, float * zp, float * x, float * y, float * z, int skipx, int skipy, int skipz, int nx, int ny, int nz)
 {
     float P[4][4][4];
 
-    int rNx = (int)((Nx-1)/skip_x) + 1;
-    int rNz = (int)((Nz-1)/skip_z) + 1;
+    int rNx = (int)((nx-1)/skipx) + 1;
+    int rNy = (int)((nz-1)/skipz) + 1;
 
-    for (int i = skip_z+1; i < Nz-skip_z-1; i++)
+    for (int idx = skipx + 1; idx < nx - skipx - 1; idx++)
     {   
-        for (int j = skip_x+1; j < Nx-skip_x-1; j++)
+        for (int idy = skipy + 1; idy < ny - skipy - 1; idy++)
         {   
-            for (int k = skip_y+1; k < Ny-skip_y-1; k++)
+            for (int idz = skipz + 1; idz < nz - skipz - 1; idz++)
             {   
-                int idz = (int)(i/skip_z);
-                int idx = (int)(j/skip_x);
-                int idy = (int)(k/skip_y);
+                int ipx = (int)(idx/skipx);
+                int ipy = (int)(idy/skipy);
+                int ipz = (int)(idz/skipz);
 
-                float dz = (F_out[i + j*Nz + k*Nx*Nz].z - F_in[idz + idx*rNz + idy*rNx*rNz].z) / (F_in[(idz+1) + idx*rNz + idy*rNx*rNz].z - F_in[idz + idx*rNz + idy*rNx*rNz].z);  
-                float dx = (F_out[i + j*Nz + k*Nx*Nz].x - F_in[idz + idx*rNz + idy*rNx*rNz].x) / (F_in[idz + (idx+1)*rNz + idy*rNx*rNz].x - F_in[idz + idx*rNz + idy*rNx*rNz].x);  
-                float dy = (F_out[i + j*Nz + k*Nx*Nz].y - F_in[idz + idx*rNz + idy*rNx*rNz].y) / (F_in[idz + idx*rNz + (idy+1)*rNx*rNz].y - F_in[idz + idx*rNz + idy*rNx*rNz].y);  
+                float dx = (x[idx] - xp[ipx]) / (xp[ipx+1] - xp[ipx]);  
+                float dy = (y[idy] - yp[ipy]) / (yp[ipy+1] - yp[ipy]);  
+                float dz = (z[idz] - zp[ipz]) / (zp[ipz+1] - zp[ipz]);  
 
-                for (int pIdz = 0; pIdz < 4; pIdz++)
+                for (int pIdx = 0; pIdx < 4; pIdx++)
                 {
-                    for (int pIdx = 0; pIdx < 4; pIdx++)
+                    for (int pIdy = 0; pIdy < 4; pIdy++)
                     {
-                        for (int pIdy = 0; pIdy < 4; pIdy++)
-                        {
-                            P[pIdx][pIdy][pIdz] = F_in[(idz+pIdz-1) + (idx+pIdx-1)*rNz + (idy+pIdy-1)*rNx*rNz].v;                
-                        }
+                        for (int pIdz = 0; pIdz < 4; pIdz++)
+                            P[pIdx][pIdy][pIdz] = F[(ipx + pIdx - 1) + (ipy + pIdy - 1)*rNx + (ipz + pIdz - 1)*rNx*rNy];                
                     }
                 }
                 
-                F_out[i + j*Nz + k*Nx*Nz].v = cubic3D(P, dx, dy, dz);   
+                result[idx + idy*nx + idz*nx*ny] = cubic3d(P, dx, dy, dz);   
             }
         }
     }
@@ -117,64 +100,53 @@ void perform_cubic_interpolation(Function * F_in, Function * F_out, int skip_x, 
 
 int main()
 {
-    int original_Nx = 501;
-    int original_Ny = 501;
-    int original_Nz = 501;
+    int original_Nx = 1001;
+    int original_Ny = 1001;
+    int original_Nz = 1001;
     
-    int rescaled_Nx = 26;
-    int rescaled_Ny = 26;
-    int rescaled_Nz = 26;
+    int rescaled_Nx = 51;
+    int rescaled_Ny = 51;
+    int rescaled_Nz = 51;
 
     int original_N = original_Nx*original_Ny*original_Nz;
     int rescaled_N = rescaled_Nx*rescaled_Ny*rescaled_Nz;
 
-    auto * original_F = new Function[original_N]();
-    auto * rescaled_F = new Function[rescaled_N]();
+    float * original_x = new float[original_Nx]();
+    float * original_y = new float[original_Nx]();
+    float * original_z = new float[original_Nx]();
 
-    build_original_function(original_F, original_Nx, original_Ny, original_Nz);
+    float * rescaled_x = new float[rescaled_Nx]();
+    float * rescaled_y = new float[rescaled_Nx]();
+    float * rescaled_z = new float[rescaled_Nx]();
 
-    int skip_x = (int)((original_Nx-1)/(rescaled_Nx-1));
-    int skip_y = (int)((original_Ny-1)/(rescaled_Ny-1));
-    int skip_z = (int)((original_Nz-1)/(rescaled_Nz-1));
+    float * original_F = new float[original_N]();
+    float * rescaled_F = new float[rescaled_N]();
 
-    for (int i = 0; i < rescaled_Nz; i++)
-    {
-        for (int j = 0; j < rescaled_Nx; j++)
-        {
-            for (int k = 0; k < rescaled_Ny; k++)
-            {
-                int oId = i*skip_y + j*skip_x*original_Nz + k*skip_y*original_Nx*original_Nz;    
-                int rId = i + j*rescaled_Nz + k*rescaled_Nx*rescaled_Nz;
+    float * result = new float[original_N]();
 
-                rescaled_F[rId].x = original_F[oId].x;
-                rescaled_F[rId].y = original_F[oId].y;
-                rescaled_F[rId].z = original_F[oId].z;
-                rescaled_F[rId].v = original_F[oId].v;
-            }
-        }
-    }
+    build_function(original_F, original_x, original_y, original_z, original_Nx, original_Ny, original_Nz);
+    export_array("original3d.bin", original_F, original_N);
 
-    auto * cubic_F = new Function[original_N]();
-    auto * linear_F = new Function[original_N]();
+    build_function(rescaled_F, rescaled_x, rescaled_y, rescaled_z, rescaled_Nx, rescaled_Ny, rescaled_Nz);
+    export_array("rescaled3d.bin", rescaled_F, rescaled_N);
 
-    for (int n = 0; n < original_N; n++)
-    {
-        cubic_F[n].x = original_F[n].x;
-        cubic_F[n].y = original_F[n].y;
-        cubic_F[n].z = original_F[n].z;
+    int skipx = (int)((original_Nx - 1)/(rescaled_Nx - 1));
+    int skipy = (int)((original_Ny - 1)/(rescaled_Ny - 1));
+    int skipz = (int)((original_Nz - 1)/(rescaled_Nz - 1));
 
-        linear_F[n].x = original_F[n].x;
-        linear_F[n].y = original_F[n].y;
-        linear_F[n].z = original_F[n].z;
-    }
+    auto tli = std::chrono::system_clock::now();    
+    perform_linear_interpolation(result, rescaled_F, rescaled_x, rescaled_y, rescaled_z, original_x, original_y, original_z, skipx, skipy, skipz, original_Nx, original_Ny, original_Nz);
+    auto tlf = std::chrono::system_clock::now();
+    export_array("linear3d.bin", result, original_N);
+    std::chrono::duration<double> tl = tlf - tli;
+    std::cout << "3D linear interpolation runtime: " << tl.count() << " s." << std::endl;
 
-    perform_cubic_interpolation(rescaled_F, cubic_F, skip_x, skip_y, skip_z, original_Nx, original_Ny, original_Nz);
-    perform_linear_interpolation(rescaled_F, linear_F, skip_x, skip_y, skip_z, original_Nx, original_Ny, original_Nz);
-
-    export_3d("outputs/cubic3D.bin", cubic_F, original_N);
-    export_3d("outputs/linear3D.bin", linear_F, original_N);
-    export_3d("outputs/original3D.bin", original_F, original_N);
-    export_3d("outputs/rescaled3D.bin", rescaled_F, rescaled_N);
+    auto tci = std::chrono::system_clock::now();    
+    perform_cubic_interpolation(result, rescaled_F, rescaled_x, rescaled_y, rescaled_z, original_x, original_y, original_z, skipx, skipy, skipz, original_Nx, original_Ny, original_Nz);
+    auto tcf = std::chrono::system_clock::now();
+    export_array("cubic3d.bin", result, original_N);
+    std::chrono::duration<double> tc = tcf - tci;
+    std::cout << "3D cubic interpolation runtime: " << tc.count() << " s." << std::endl;
 
     return 0;
 }
